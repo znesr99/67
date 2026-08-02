@@ -20,8 +20,11 @@ local LocalPlayer = PlayersService.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
-local NameMap = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+local NameMap = tostring(game.PlaceId)
 
+pcall(function()
+    NameMap = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+end)
 local WindUI = loadstring(game:HttpGet(
 	"https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"
 ))()
@@ -153,7 +156,7 @@ task.spawn(function()
 						end
 
 						Target = List[Index]
-						Index += 1
+						Index = Index + 1
 					else
 						Target = nil
 					end
