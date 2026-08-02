@@ -19,7 +19,10 @@ local PlayersService = game:GetService("Players")
 local LocalPlayer = PlayersService.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-
+local Attack = function()
+	game:GetService("VirtualUser"):CaptureController()
+	game:GetService("VirtualUser"):Button1Down(Vector2.new(1280,672))
+end
 local NameMap = tostring(game.PlaceId)
 
 pcall(function()
@@ -123,87 +126,83 @@ local Target
 local List = {}
 local Index = 1
 local LastScan = 0
-
+local WaitC = 0
+local LastTargetPos
 
 task.spawn(function()
 	while task.wait() do
 		pcall(function()
-
 			if getgenv().Config.Main["Auto Teleport Attack"] then
-
-				if tick()-LastScan >= 2 then
+				if tick() - WaitC >= 1 then
+				WaitC = tick()
+				Attack()
+				end
+				if tick() - LastScan >= 2 then
 					LastScan = tick()
-
 					List = {}
-
 					for _,v in ipairs(PlayersService:GetPlayers()) do
-						if v ~= LocalPlayer 
-						and v.Character
-						and v.Character:FindFirstChild("HumanoidRootPart")
-						and (
-							(v.Backpack and v.Backpack:FindFirstChildWhichIsA("Tool"))
-							or v.Character:FindFirstChildWhichIsA("Tool")
-						)
-						then
+						if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and ((v.Backpack and v.Backpack:FindFirstChildWhichIsA("Tool")) or v.Character:FindFirstChildWhichIsA("Tool")) then
 							table.insert(List,v)
 						end
 					end
-
-
 					if #List > 0 then
-						if Index > #List then
-							Index = 1
-						end
+						if not Target or not table.find(List,Target) then
+							if Index > #List then
+								Index = 1
+							end
 
-						Target = List[Index]
-						Index = Index + 1
+							Target = List[Index]
+							Index = Index + 1
+							LastTargetPos = nil
+						end
 					else
 						Target = nil
+						LastTargetPos = nil
 					end
 				end
-
-
 				local Char = LocalPlayer.Character
-
 				if Char and Char:FindFirstChild("HumanoidRootPart") then
-
-					if not Char:FindFirstChildWhichIsA("Tool")
-					and not LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") then
-
-						firetouchinterest(
-							Char.HumanoidRootPart,
-							workspace.Lobby.Teleport1,
-							0
-						)
-
-						firetouchinterest(
-							Char.HumanoidRootPart,
-							workspace.Lobby.Teleport1,
-							1
-						)
+					if not Char:FindFirstChildWhichIsA("Tool") and not LocalPlayer.Backpack:FindFirstChildWhichIsA("Tool") then
+						firetouchinterest(Char.HumanoidRootPart,workspace.Lobby.Teleport1,0)
+						firetouchinterest(Char.HumanoidRootPart,workspace.Lobby.Teleport1,1)
 					end
-
-
-					if Target
-					and Target.Character
-					and Target.Character:FindFirstChild("HumanoidRootPart") then
-
-						Char.HumanoidRootPart.CFrame =
-							Target.Character.HumanoidRootPart.CFrame *
-							CFrame.new(0,0,4)
-
-						game:GetService("VirtualUser"):CaptureController()
-						game:GetService("VirtualUser"):Button1Down(
-							Vector2.new(1280,672)
-						)
-
+					if Target and Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
+						local HRP = Target.Character.HumanoidRootPart
+						local Humanoid = Target.Character:FindFirstChild("Humanoid")
+					
+						if HRP.Position.Y < -40
+						or not Humanoid
+						or Humanoid.Health <= 0
+						or (LastTargetPos and (HRP.Position - LastTargetPos).Magnitude >= 25) then
+							if #List > 0 then
+								if Index > #List then
+									Index = 1
+								end
+					
+								repeat
+									Target = List[Index]
+									Index = Index + 1
+					
+									if Index > #List then
+										Index = 1
+									end
+								until Target ~= LocalPlayer or #List <= 1
+					
+								LastTargetPos = nil
+							else
+								Target = nil
+								LastTargetPos = nil
+							end
+						else
+							Char.HumanoidRootPart.CFrame = HRP.CFrame * CFrame.new(0,0,4)
+							LastTargetPos = HRP.Position
+						end
 					end
 				end
 			end
 		end)
 	end
 end)
-
 
 
 task.spawn(function()
@@ -329,3 +328,22 @@ task.spawn(function()
 
 end)
 
+task.spawn(function()
+	pcall(function()
+		game:GetService("RunService").Stepped:Connect(function()
+			if getgenv().Config.Main["Auto Teleport Attack"] then
+				if not game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("BodyClip") then
+				local Noclip = Instance.new("BodyVelocity")
+					Noclip.Name = "BodyClip"
+					Noclip.Parent = game.Players.LocalPlayer.Character.HumanoidRootPart
+					Noclip.MaxForce = Vector3.new(100000, 100000, 100000)
+					Noclip.Velocity = Vector3.new(0, 0, 0)
+					end
+				else    
+					if game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("BodyClip") then
+					game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("BodyClip"):Destroy()
+				end
+			end
+		end)
+	end)
+end)  
